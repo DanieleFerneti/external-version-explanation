@@ -1,0 +1,35 @@
+Each column that contains N refers to a random generated attribute, different for each table
+Columns that contains Nx, refers to a random generated attribute duplicated in different tables
+
+So, we generate 10 new synthetic tables with following specs
+
+[Series_Title, N, N, N, N, N]   | Viewer_Engagement_Metrics.csv      
+[Series_Title, N, N, N, N, N]   | Production_Quality_Stats.csv       
+[Series_Title, N, N, N, N, N]   | Artistic_And_Merch_Data.csv        
+[Series_Title, N, N, N, N, N]   | Director_And_Fan_Reception.csv     
+[Series_Title, N, N, N, N, N]   | Behind_The_Scenes_Info.csv         
+[Series_Title, N1, N2]    		| Casting_Info.csv                   
+[Series_Title, N1, N2, N]    	| Casting_And_Filming_Details.csv 
+[Series_Title, N1, N, N, N]    	| Production_And_Creatives.csv       
+[N, N1, N2, N, N]    			| Distribution_And_Awards.csv       
+[N1,N2]     					| Core_Crew_Info.csv     
+
+Viewer_Engagement_Metrics: ['Series_Title', 'Viewer_Retention', 'Soundtrack_Score', 'Scene_Count', 'Episode_Length_Avg', 'Cinematography_Style']
+
+Production_Quality_Stats: ['Series_Title', 'Budget_Category', 'Visual_Effects_Quality', 'Dialogue_Density', 'Season_Count', 'Originality_Score']
+
+Artistic_And_Merch_Data: ['Series_Title', 'Set_Design_Type', 'Cultural_Impact_Score', 'Merchandise_Sales', 'Rewatchability_Index', 'Opening_Credits_Length']
+
+Director_And_Fan_Reception: ['Series_Title', 'Director_Experience_Years', 'Streaming_Rank', 'Fan_Engagement_Level', 'Episodes_With_Cliffhanger', 'Critical_Consensus']
+
+Behind_The_Scenes_Info: ['Series_Title', 'Behind_The_Scenes_Hours', 'Spin_Offs_Count', 'Script_Revisions', 'Premiere_Country', 'Viral_Moments_Count']
+
+Casting_Info: ['Series_Title', 'Production_Company', 'Lead_Actor']
+
+Casting_And_Filming_Details: ['Series_Title', 'Production_Company', 'Lead_Actor', 'Filming_Duration']
+
+Production_And_Creatives: ['Series_Title', 'Production_Company', 'Costume_Designer', 'Script_Language', 'Original_Sound_Composer']
+
+Distribution_And_Awards: ['Release_Format', 'Production_Company', 'Lead_Actor', 'Award_Nominations', 'Studio_Location']
+
+Core_Crew_Info: ['Production_Company', 'Lead_Actor']
