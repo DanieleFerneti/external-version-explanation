@@ -1,0 +1,20 @@
+{
+    "Candidate1_inner": {
+        "candidate_used": "Candidate1",
+        "join_type": "inner",
+        "dropped_columns": [],
+        "data_loss_percent": 40.0
+    },
+    "Candidate1_left": {
+        "candidate_used": "Candidate1",
+        "join_type": "left",
+        "dropped_columns": [],
+        "data_loss_percent": 40.0
+    },
+    "Candidate1_outer": {
+        "candidate_used": "Candidate1",
+        "join_type": "outer",
+        "dropped_columns": [],
+        "data_loss_percent": 0.0
+    }
+}
