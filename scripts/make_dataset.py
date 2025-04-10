@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import string
+import os
 
 SEED = 42
 random.seed(SEED)
@@ -16,7 +17,10 @@ def random_int(low=1, high=300):
     return random.randint(low, high)
 
 
-PATH = 'dataset/base_tables/'
+PATH = 'dataset/base_tables_v2/'
+os.makedirs(PATH, exist_ok=True)
+
+
 base_df = pd.read_csv("dataset/IMDB_Ver_0.csv")
 base_len = len(base_df)
 
@@ -45,13 +49,14 @@ Production_Quality_Stats.to_csv(f"{PATH}Production_Quality_Stats.csv", index=Fal
 print("dataset/Production_Quality_Stats.csv creato")
 
 ### 3. Artistic_And_Merch_Data
+k = 300
 Artistic_And_Merch_Data = pd.DataFrame({
-    'Series_Title': random.sample(list(base_df['Series_Title']), k=300),
-    'Set_Design_Type': [random.choice(["Futuristic", "Historical", "Contemporary"]) for _ in range(base_len)],
-    'Cultural_Impact_Score': [random_float(1, 10) for _ in range(base_len)],
-    'Merchandise_Sales': [random_int(1000, 1000000) for _ in range(base_len)],
-    'Rewatchability_Index': [random_float(50, 90) for _ in range(base_len)],
-    'Opening_Credits_Length': [random_int(30, 120) for _ in range(base_len)]
+    'Series_Title': random.sample(list(base_df['Series_Title']), k=k),
+    'Set_Design_Type': [random.choice(["Futuristic", "Historical", "Contemporary"]) for _ in range(k)],
+    'Cultural_Impact_Score': [random_float(1, 10) for _ in range(k)],
+    'Merchandise_Sales': [random_int(1000, 1000000) for _ in range(k)],
+    'Rewatchability_Index': [random_float(50, 90) for _ in range(k)],
+    'Opening_Credits_Length': [random_int(30, 120) for _ in range(k)]
 })
 Artistic_And_Merch_Data.to_csv(f"{PATH}Artistic_And_Merch_Data.csv", index=False)
 print("dataset/Artistic_And_Merch_Data.csv creato")
@@ -69,13 +74,14 @@ Director_And_Fan_Reception.to_csv(f"{PATH}Director_And_Fan_Reception.csv", index
 print("dataset/Director_And_Fan_Reception.csv creato")
 
 ### 5. Behind_The_Scenes_Info
+k=470
 Behind_The_Scenes_Info = pd.DataFrame({
-    'Series_Title': random.sample(list(base_df['Series_Title']), k=470),
-    'Behind_The_Scenes_Hours': [random_int(10, 500) for _ in range(base_len)],
-    'Spin_Offs_Count': [random_int(0, 5) for _ in range(base_len)],
-    'Script_Revisions': [random_int(1, 20) for _ in range(base_len)],
-    'Premiere_Country': [random.choice(["USA", "UK", "Canada"]) for _ in range(base_len)],
-    'Viral_Moments_Count': [random_int(0, 50) for _ in range(base_len)]
+    'Series_Title': random.sample(list(base_df['Series_Title']), k=k),
+    'Behind_The_Scenes_Hours': [random_int(10, 500) for _ in range(k)],
+    'Spin_Offs_Count': [random_int(0, 5) for _ in range(k)],
+    'Script_Revisions': [random_int(1, 20) for _ in range(k)],
+    'Premiere_Country': [random.choice(["USA", "UK", "Canada"]) for _ in range(k)],
+    'Viral_Moments_Count': [random_int(0, 50) for _ in range(k)]
 })
 Behind_The_Scenes_Info.to_csv(f"{PATH}Behind_The_Scenes_Info.csv", index=False)
 print("dataset/Behind_The_Scenes_Info.csv creato")
