@@ -46,7 +46,7 @@ print("dataset/Production_Quality_Stats.csv creato")
 
 ### 3. Artistic_And_Merch_Data
 Artistic_And_Merch_Data = pd.DataFrame({
-    'Series_Title': base_df['Series_Title'],
+    'Series_Title': random.sample(list(base_df['Series_Title']), k=300),
     'Set_Design_Type': [random.choice(["Futuristic", "Historical", "Contemporary"]) for _ in range(base_len)],
     'Cultural_Impact_Score': [random_float(1, 10) for _ in range(base_len)],
     'Merchandise_Sales': [random_int(1000, 1000000) for _ in range(base_len)],
@@ -70,7 +70,7 @@ print("dataset/Director_And_Fan_Reception.csv creato")
 
 ### 5. Behind_The_Scenes_Info
 Behind_The_Scenes_Info = pd.DataFrame({
-    'Series_Title': base_df['Series_Title'],
+    'Series_Title': random.sample(list(base_df['Series_Title']), k=470),
     'Behind_The_Scenes_Hours': [random_int(10, 500) for _ in range(base_len)],
     'Spin_Offs_Count': [random_int(0, 5) for _ in range(base_len)],
     'Script_Revisions': [random_int(1, 20) for _ in range(base_len)],
