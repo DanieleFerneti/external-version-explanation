@@ -96,11 +96,12 @@ Casting_Info.to_csv(f"{PATH}Casting_Info.csv", index=False)
 print("dataset/Casting_Info.csv creato")
 
 ### 7. Casting_And_Filming_Details (include N1, N2 + uno nuovo)
+k=350
 Casting_And_Filming_Details = pd.DataFrame({
-    'Series_Title': base_df['Series_Title'],
-    'Production_Company': Casting_Info['Production_Company'],
-    'Lead_Actor': Casting_Info['Lead_Actor'],
-    'Filming_Duration': [random.choice(["3 months", "6 months", "1 year"]) for _ in range(base_len)]
+    'Series_Title': random.sample(list(base_df['Series_Title']), k=k),
+    'Production_Company': random.sample(list(Casting_Info['Production_Company']),k=k),
+    'Lead_Actor': random.sample(list(Casting_Info['Lead_Actor']),k=k),
+    'Filming_Duration': [random.choice(["3 months", "6 months", "1 year"]) for _ in range(k)]
 })
 Casting_And_Filming_Details.to_csv(f"{PATH}Casting_And_Filming_Details.csv", index=False)
 print("dataset/Casting_And_Filming_Details.csv creato")

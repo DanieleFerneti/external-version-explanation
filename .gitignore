@@ -267,5 +267,5 @@ pyvenv.cfg
 pip-selfcheck.json
 
 
-/dataset/*/*.csv
+dataset/*/*.csv
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,venv,python,sublimetext
