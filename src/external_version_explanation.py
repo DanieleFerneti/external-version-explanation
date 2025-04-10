@@ -3,109 +3,12 @@ import json
 import pandas as pd
 from datasketch import MinHash
 
-
-# ===============================
-# Parte 1: Generazione delle New Tables e del Ground Truth
-# ===============================
-
-# 1. Creazione della Base Table (con N colonne)
-data_original = {
-    'id': [1, 2, 3, 4, 5],
-    'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eva'],
-    'value': [10, 20, 30, 40, 50]
-}
-df_base = pd.DataFrame(data_original)
-print("Base Table:")
-print(df_base)
-print("\n")
-
-# 2. Creazione delle Synthetic (Candidate) Tables
-# Candidate 1: contiene 'id' e 'date' -> utile per spiegare l'aggiunta della colonna 'date'
-data_candidate1 = {
-    'id': [2, 3, 4, 6],
-    'date': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']
-}
-df_candidate1 = pd.DataFrame(data_candidate1)
-
-# Candidate 2: contiene 'id' e 'score' -> non utile se il nuovo attributo da spiegare è 'date'
-data_candidate2 = {
-    'id': [1, 2, 5, 7],
-    'score': [95, 85, 75, 65]
-}
-df_candidate2 = pd.DataFrame(data_candidate2)
-
-# Salva le candidate in un dizionario per uso successivo
-synthetic_tables = {
-    "Candidate1": df_candidate1,
-    "Candidate2": df_candidate2
-}
-
-# Specifica del nuovo attributo da spiegare
-new_attribute = 'date'
-
-# 3. Esecuzione dei join per creare le New Tables
-join_types = ["inner", "left", "outer"]
-
-# Dizionari per salvare i risultati e il ground truth
-new_tables = {}
-ground_truth = {}
-
-for candidate_name, df_candidate in synthetic_tables.items():
-    if new_attribute not in df_candidate.columns:
-        continue  # Salta la candidate se non ha il campo richiesto
-    for jt in join_types:
-        joined_table = pd.merge(df_base, df_candidate, on='id', how=jt)
-        # Calcolo del data loss in percentuale:
-        if jt == "inner":
-            data_loss = 100 * (1 - len(joined_table) / len(df_base))
-        elif jt == "left":
-            data_loss = 100 * (1 - joined_table[new_attribute].notnull().sum() / len(joined_table))
-        else:  # outer
-            base_ids = set(df_base['id'])
-            joined_ids = set(joined_table['id'])
-            missing_ratio = 100 * (1 - len(base_ids.intersection(joined_ids)) / len(base_ids))
-            data_loss = missing_ratio
-
-        # Determina quali colonne della candidate non compaiono nel risultato (simula un'operazione di proiezione)
-        candidate_cols = set(df_candidate.columns)
-        new_table_cols = set(joined_table.columns)
-        dropped_columns = list(candidate_cols - new_table_cols)
-
-        # Crea una chiave unica per identificare la new table generata
-        key = f"{candidate_name}_{jt}"
-        new_tables[key] = joined_table
-
-        ground_truth[key] = {
-            "candidate_used": candidate_name,
-            "join_type": jt,
-            "dropped_columns": dropped_columns,
-            "data_loss_percent": round(data_loss, 2)
-        }
-
-# Salva il file ground truth in formato JSON nella cartella results
-parent_dir = os.path.dirname(os.getcwd())
-results_dir = os.path.join(parent_dir, "results")
-if not os.path.exists(results_dir):
-    os.makedirs(results_dir)
-
-ground_truth_file = os.path.join(results_dir, "ground_truth.json")
-with open(ground_truth_file, "w") as f:
-    json.dump(ground_truth, f, indent=4)
-print(f"Ground truth salvato in: {ground_truth_file}\n")
-
-print("New tables generate:")
-for key in new_tables:
-    print(key)
-print("\n")
-
-
-# ===============================
-# Parte 2: Reverse Engineering della Trasformazione
-# ===============================
-
-# Funzione di similarità che utilizza MinHash (Jaccard), normalized Levenshtein e il containment
 def compute_similarity_multiple(series1, series2, num_perm=128):
-    # Similarità Jaccard tramite MinHash (datasketch)
+    """
+    Calcola la similarità tra due serie utilizzando MinHash (Jaccard)
+    e il containment.
+    (Questa funzione non viene più usata per il calcolo dei punteggi a livello di schema.)
+    """
     m1 = MinHash(num_perm=num_perm)
     m2 = MinHash(num_perm=num_perm)
     for value in series1.astype(str).tolist():
@@ -114,89 +17,167 @@ def compute_similarity_multiple(series1, series2, num_perm=128):
         m2.update(value.encode('utf8'))
     jaccard_sim = m1.jaccard(m2)
     
-    
-    # Similarità di Containment:
-    # Assumiamo di considerare la new table come riferimento (Q) e la candidate come X:
-    set_target = set(series1.astype(str).tolist())
-    set_candidate = set(series2.astype(str).tolist())
-    containment_sim = len(set_target.intersection(set_candidate)) / len(set_target) if set_target else 0.0
+    set1 = set(series1.astype(str).tolist())
+    set2 = set(series2.astype(str).tolist())
+    containment_sim = len(set1.intersection(set2)) / len(set1) if set1 else 0.0
     
     return {"jaccard": jaccard_sim, "containment": containment_sim}
 
-# Funzione per confrontare due DataFrame
-def tables_are_similar(df1, df2):
+def tables_are_identical(df1, df2):
     try:
         return df1.reset_index(drop=True).equals(df2.reset_index(drop=True))
-    except Exception as e:
+    except Exception:
         return False
 
-# Funzione per ricostruire la trasformazione
-def reconstruct_transformation(base_table, new_table, synthetic_tables, join_types=["inner", "left", "outer"]):
-    # 1. Identifica le colonne aggiunte nella new_table rispetto alla base_table
-    added_attributes = list(set(new_table.columns) - set(base_table.columns))
-    if not added_attributes:
-        print("Non sono state aggiunte colonne rispetto alla Base Table.")
-        return None, None
-    print("Attributi aggiunti trovati:", added_attributes)
-    
-    # Supponiamo di voler spiegare il primo attributo aggiunto, ad es. 'date'
-    target_attribute = added_attributes[0]
-    
-    # 2. Per ogni candidate che contiene il target_attribute, calcola la similarità usando più metodi
+def load_base_table(path="dataset/IMDB_Ver_0.csv"):
+    base_table = pd.read_csv(path)
+    #print("Base Table caricata da:", path)
+    return base_table, path
+
+def load_joined_table(joined_dir="dataset/joined_tables_v2"):
+    # Per semplicità si fissa il nome della Joined Table (es. "table_1.csv")
+    joined_filename = "table_8.csv"
+    joined_path = os.path.join(joined_dir, joined_filename)
+    joined_table = pd.read_csv(joined_path)
+    print("\nJoined Table caricata da: " + joined_filename + "\n")
+    return joined_table, joined_path
+
+def compute_added_attributes(base_table, joined_table):
+    # Calcola le colonne aggiunte: cioè quelle presenti nella Joined Table ma non nella Base Table.
+    added_attrs = set(joined_table.columns) - set(base_table.columns)
+    #print("Attributi aggiunti nella Joined Table:", list(added_attrs))
+    return added_attrs
+
+def load_candidate_tables(candidate_dir="dataset/base_tables_v2"):
+    candidate_files = [f for f in os.listdir(candidate_dir) if f.endswith(".csv")]
+    candidates = {}
+    for file in candidate_files:
+        path = os.path.join(candidate_dir, file)
+        candidates[file] = pd.read_csv(path)
+    return candidates, candidate_dir
+
+def compute_candidate_scores(added_attrs, candidates, joined_table=None):
+    """
+    Calcola il punteggio per ciascun candidato basandosi esclusivamente sullo schema:
+    il punteggio viene calcolato come il rapporto:
+        (numero di added attributes presenti nello schema del candidato) / (numero totale di added attributes)
+    """
     candidate_scores = {}
-    for candidate_name, candidate_df in synthetic_tables.items():
-        if target_attribute in candidate_df.columns:
-            sim_dict = compute_similarity_multiple(candidate_df[target_attribute], new_table[target_attribute])
-            best_method_value = max(sim_dict.values())
-            candidate_scores[candidate_name] = best_method_value
-            print(f"Similarità per candidate {candidate_name} (best method): {best_method_value:.2f} - Dettagli: {sim_dict}")
-    
+    candidate_common_attrs = {}
+    for filename, df in candidates.items():
+        # Considera solo i candidati che contengono la chiave di join "Series_Title"
+        if "Series_Title" not in df.columns:
+            print(f"Salto il candidato {filename} perché non contiene la colonna 'Series_Title'")
+            continue
+        # common_attrs sono gli attributi aggiunti (definiti dallo schema della Joined Table)
+        # che il candidato possiede
+        common_attrs = added_attrs.intersection(set(df.columns))
+        if not common_attrs:
+            continue
+        # Calcola il punteggio: frazione degli attributi aggiunti presenti
+        aggregated_sim = len(common_attrs) / len(added_attrs)  
+        candidate_scores[filename] = aggregated_sim
+        candidate_common_attrs[filename] = list(common_attrs)
+        print(f"Candidate {filename} - Similarità aggregata: {aggregated_sim:.2f}\n")
+    return candidate_scores, candidate_common_attrs
+
+def select_best_candidate(candidate_scores, candidate_common_attrs):
     if not candidate_scores:
-        print("Nessuna candidate table contiene il target attribute.")
-        return None, None
-
+        raise ValueError("Nessuna tabella candidata contiene attributi aggiunti della Joined Table.")
     best_candidate = max(candidate_scores, key=candidate_scores.get)
-    print("Candidate migliore sulla base della similarità:", best_candidate)
-    
-    # 3. Testa diversi tipi di join con la candidate selezionata
-    best_join_type = None
-    best_match = None
-    best_match_score = -1
-    candidate_df = synthetic_tables[best_candidate]
+    print("\nLa tabella candidata migliore è:", best_candidate)
+    print("\nPunteggio aggregato:", candidate_scores[best_candidate])
+    return best_candidate
+
+def test_join_types(base_table, candidate_df, joined_table, join_key="Series_Title"):
+    join_types = ["left", "right"]
+    join_results = {}
     for jt in join_types:
-        candidate_join = pd.merge(base_table, candidate_df, on="id", how=jt)
-        sim_dict = compute_similarity_multiple(candidate_join.fillna("NaN").stack(), new_table.fillna("NaN").stack())
-        similarity = max(sim_dict.values())
-        print(f"Tipo di join '{jt}' produce similarità: {similarity:.2f} - Dettagli: {sim_dict}")
-        if similarity > best_match_score:
-            best_match_score = similarity
-            best_match = candidate_join
-            best_join_type = jt
+        joined_df = pd.merge(base_table, candidate_df, on=join_key, how=jt)
+        identical = tables_are_identical(joined_df, joined_table)
+        join_results[jt] = {"dataframe": joined_df, "identical": identical}
+        print(f"\nJoin type '{jt}' produce una tabella identica? {identical}")
+    return join_results
 
-    print("\nIl miglior tipo di join è:", best_join_type)
-    if not tables_are_similar(best_match, new_table):
-        print("Attenzione: anche il miglior join non produce una tabella identica alla New Table.")
-    else:
-        print("Il risultato del join corrisponde perfettamente alla New Table.")
-    
+def find_matching_join(join_results):
+    for jt, result in join_results.items():
+        if result["identical"]:
+            return jt, result["dataframe"]
+    return None, None
+
+def create_explanation(base_table_path, joined_table_path, best_candidate,
+                       candidate_common_attrs, candidate_score, matching_join,
+                       candidate_df, joined_df):
+    candidate_cols = set(candidate_df.columns)
+    joined_cols = set(joined_df.columns)
+    dropped_columns = list(candidate_cols - joined_cols)
     explanation = {
+        "base_table": os.path.basename(base_table_path),
+        "joined_table": os.path.basename(joined_table_path),
         "candidate_used": best_candidate,
-        "join_type": best_join_type,
-        "target_attribute": target_attribute,
-        "similarity_candidate_new": round(candidate_scores[best_candidate], 2),
-        "final_join_similarity": round(best_match_score, 2)
+        "common_attributes_used": candidate_common_attrs[best_candidate],
+        "join_type": matching_join,
+        "dropped_columns": dropped_columns,
+        "aggregated_similarity_candidate_joined": candidate_score,
+        "steps_explanation": (
+            "La trasformazione è stata ottenuta partendo dalla Base Table, "
+            "a cui è stata joinata la tabella candidata '" + best_candidate + "' "
+            "utilizzando la colonna 'Series_Title' come chiave di join. "
+            "Il join di tipo '" + matching_join + "' ha prodotto esattamente la Joined Table: "
+            "durante il processo, le seguenti colonne della tabella candidata sono state escluse: " +
+            str(dropped_columns)
+        )
     }
-    return explanation, best_match
+    return explanation
 
-# Seleziona una delle new tables generate per il reverse engineering
-selected_new_table_key = "Candidate1_left"  # Ad es., quella prodotta con Candidate1 e join 'left'
-df_new = new_tables[selected_new_table_key]
-print("\n--- Reverse Engineering per la new table:", selected_new_table_key, "---")
-explanation, reconstructed_table = reconstruct_transformation(df_base, df_new, synthetic_tables)
-print("\nSpiegazione della trasformazione ricostruita:")
-print(json.dumps(explanation, indent=4))
+def save_json_output(explanation, results_dir="results", file_name="reconstructed_transformation.json"):
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    output_file = os.path.join(results_dir, file_name)
+    with open(output_file, "w", encoding="utf8") as f:
+        json.dump(explanation, f, indent=4, ensure_ascii=False)
+    print("\nSpiegazione della trasformazione ricostruita (JSON):")
+    print(json.dumps(explanation, indent=4, ensure_ascii=False))
 
-explained_file = os.path.join(results_dir, "reconstructed_transformation.json")
-with open(explained_file, "w") as f:
-    json.dump(explanation, f, indent=4)
-print(f"\nLa spiegazione della trasformazione è stata salvata in: {explained_file}")
+def main_flow():
+    # Step 1: Load Base Table
+    base_table, base_table_path = load_base_table()
+    
+    # Step 2: Load Joined Table
+    joined_table, joined_table_path = load_joined_table()
+    
+    # Step 3: Compute Added Attributes (solo quelle aggiunte allo schema, cioè le colonne nuove della Joined Table)
+    added_attrs = compute_added_attributes(base_table, joined_table)
+    
+    # Step 4: Load Candidate Tables
+    candidates, candidate_dir = load_candidate_tables()
+    
+    # Step 5: Compute Candidate Scores utilizzando solo i nomi (lo schema) delle colonne aggiunte
+    candidate_scores, candidate_common_attrs = compute_candidate_scores(added_attrs, candidates)
+    
+    # Step 6: Select Best Candidate
+    best_candidate = select_best_candidate(candidate_scores, candidate_common_attrs)
+    best_candidate_path = os.path.join(candidate_dir, best_candidate)
+    candidate_df = pd.read_csv(best_candidate_path)
+    
+    # Step 7: Test Join Types
+    join_results = test_join_types(base_table, candidate_df, joined_table)
+    
+    # Step 8: Find Matching Join
+    matching_join, joined_df = find_matching_join(join_results)
+    
+    if matching_join:
+        print("\nIl join type che produce una tabella identica è:", matching_join)
+        # Step 9: Create Explanation
+        explanation = create_explanation(base_table_path, joined_table_path,
+                                         best_candidate, candidate_common_attrs,
+                                         candidate_scores[best_candidate], matching_join,
+                                         candidate_df, joined_df)
+        # Step 10: Save JSON Output
+        save_json_output(explanation)
+    else:
+        print("\nNessun tipo di join produce una tabella identica alla Joined Table. " +
+              "Verifica se la trasformazione include altre operazioni o se il candidato selezionato non è quello corretto.")
+
+if __name__ == "__main__":
+    main_flow()
