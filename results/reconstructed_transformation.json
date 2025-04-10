@@ -1,0 +1,7 @@
+{
+    "candidate_used": "Candidate1",
+    "join_type": "inner",
+    "target_attribute": "date",
+    "similarity_candidate_new": 0.75,
+    "final_join_similarity": 1.0
+}
