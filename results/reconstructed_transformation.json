@@ -1,9 +1,9 @@
 {
     "source_table": "IMDB_Ver_0.csv",
     "joined_table": "table_5.csv",
-    "candidate_used": "Casting_Info.csv",
+    "candidate_used": "Director_And_Fan_Reception.csv",
     "join_type": "left",
     "dropped_columns": [],
-    "aggregated_similarity_candidate_joined": 1.509375,
-    "steps_explanation": "The transformation is obtained by joining the source table with the candidate table 'Casting_Info.csv' using the join key 'Series_Title'. The join type 'left' produced an identical result to the joined table. The following columns from the candidate table were excluded during the process: []"
+    "aggregated_similarity_candidate_joined": 3.33125,
+    "steps_explanation": "The transformation is obtained by joining the source table with the candidate table 'Director_And_Fan_Reception.csv' using the join key 'Series_Title'. The join type 'left' produced an identical result to the joined table. The following columns from the candidate table were excluded during the process: []"
 }
