@@ -4,13 +4,15 @@
 **Author:** Gianluca Farinaccio <br>
 **Author:** Daniele Ferneti <br>
 
-In modern data lakes, datasets often evolve over time and external changes—such
-as the addition of new attributes—must be explained. The aim of this assign-
-ment is to build a system capable of finding candidate tables that, when joined
-with a base (source) table, explain the observed attribute additions in a new
-dataset version. In our approach, the system first generates synthetic candidate
-tables from the base dataset, then performs various join operations, and finally
-uses both schema and data content similarity to select the best candidate table.
+This report describes the solution designed and implemented to ad-
+dress the ”Version Management in Data Lakes” assignment. We choose
+the first point of assignment so the objective was to build a system that,
+given two dataset versions, uses table search to find a set of candidate
+tables that can explain the addition using a join. Since no data set
+was provided, We built a small data set based on IMdb. This report
+presents a complete solution for explaining external changes in data lakes
+by identifying candidate tables that can account for attribute additions
+via join operations.
 
 ## Project Structure
 
