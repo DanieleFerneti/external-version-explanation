@@ -6,7 +6,7 @@ import utils
 JOINED_TABLE_PATH = "dataset/joined_tables_v2"
 BASE_TABLE_PATH = "dataset/base_tables_v2"
 SOURCE_TABLE_PATH = "dataset/IMDB_Ver_0.csv"
-JOINED_TABLE_NAME = "table_1.csv"
+JOINED_TABLE_NAME = "table_5.csv"
 
 if __name__ == "__main__":
 
@@ -36,6 +36,7 @@ if __name__ == "__main__":
     for candidate in top_candidates.keys():
         print(f'** "{candidate}": {top_candidates[candidate]}')
 
+    # Load the best candidate table as a DataFrame from the candidate tables directory.
     best_candidate_path = os.path.join(BASE_TABLE_PATH, best_table)
     best_df = utils.load_csv_table(best_candidate_path)
     
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     matching_join, joined_df = utils.find_matching_join(join_results)
     
     if matching_join:
-        print("\nIl join type che produce una tabella identica è:", matching_join)
+        print("\nThe join type that produces an identical table is:", matching_join)
         # Step 9: Create Explanation
         explanation = utils.create_explanation(SOURCE_TABLE_PATH, JOINED_TABLE_NAME,
                                          best_table,
@@ -55,7 +56,7 @@ if __name__ == "__main__":
         # Step 10: Save JSON Output
         utils.save_json_output(explanation)
     else:
-        print("\nNessun tipo di join produce una tabella identica alla Joined Table. " +
-              "Verifica se la trasformazione include altre operazioni o se il candidato selezionato non è quello corretto.")
+        print("\nNo join type produces an identical table to the Joined Table. " +
+              "Check if the transformation includes other operations or if the selected candidate is incorrect.")
 
 
