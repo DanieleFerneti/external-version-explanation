@@ -3,24 +3,27 @@ import random
 import string
 import os
 
+# Set random seed for reproducibility.
 SEED = 42
 random.seed(SEED)
 
-# Funzione per generare dati casuali
+# Generate a random string.
 def random_string(length=15):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
+# Generate a random float within a range.
 def random_float(low=1.0, high=30.0):
     return round(random.uniform(low, high), 2)
 
+# Generate a random integer within a range.
 def random_int(low=1, high=300):
     return random.randint(low, high)
 
-
+# Create the output directory for candidate tables.
 PATH = 'dataset/base_tables_v2/'
 os.makedirs(PATH, exist_ok=True)
 
-
+# Load the base dataset.
 base_df = pd.read_csv("dataset/IMDB_Ver_0.csv")
 base_len = len(base_df)
 
@@ -74,7 +77,7 @@ Director_And_Fan_Reception.to_csv(f"{PATH}Director_And_Fan_Reception.csv", index
 print("dataset/Director_And_Fan_Reception.csv creato")
 
 ### 5. Behind_The_Scenes_Info
-k=470
+k = 470
 Behind_The_Scenes_Info = pd.DataFrame({
     'Series_Title': random.sample(list(base_df['Series_Title']), k=k),
     'Behind_The_Scenes_Hours': [random_int(10, 500) for _ in range(k)],
@@ -86,7 +89,7 @@ Behind_The_Scenes_Info = pd.DataFrame({
 Behind_The_Scenes_Info.to_csv(f"{PATH}Behind_The_Scenes_Info.csv", index=False)
 print("dataset/Behind_The_Scenes_Info.csv creato")
 
-### 6. Casting_Info (con N1 e N2: Production_Company, Lead_Actor)
+### 6. Casting_Info (with duplicated N1 and N2 attributes: Production_Company, Lead_Actor)
 Casting_Info = pd.DataFrame({
     'Series_Title': base_df['Series_Title'],
     'Production_Company': [random_string() for _ in range(base_len)],
@@ -95,18 +98,18 @@ Casting_Info = pd.DataFrame({
 Casting_Info.to_csv(f"{PATH}Casting_Info.csv", index=False)
 print("dataset/Casting_Info.csv creato")
 
-### 7. Casting_And_Filming_Details (include N1, N2 + uno nuovo)
-k=350
+### 7. Casting_And_Filming_Details (includes N1, N2 and an extra attribute)
+k = 350
 Casting_And_Filming_Details = pd.DataFrame({
     'Series_Title': random.sample(list(base_df['Series_Title']), k=k),
-    'Production_Company': random.sample(list(Casting_Info['Production_Company']),k=k),
-    'Lead_Actor': random.sample(list(Casting_Info['Lead_Actor']),k=k),
+    'Production_Company': random.sample(list(Casting_Info['Production_Company']), k=k),
+    'Lead_Actor': random.sample(list(Casting_Info['Lead_Actor']), k=k),
     'Filming_Duration': [random.choice(["3 months", "6 months", "1 year"]) for _ in range(k)]
 })
 Casting_And_Filming_Details.to_csv(f"{PATH}Casting_And_Filming_Details.csv", index=False)
 print("dataset/Casting_And_Filming_Details.csv creato")
 
-### 8. Production_And_Creatives (altri attributi inventati + Series_Title)
+### 8. Production_And_Creatives (additional attributes with Series_Title)
 Production_And_Creatives = pd.DataFrame({
     'Series_Title': base_df['Series_Title'],
     'Production_Company': Casting_Info['Production_Company'],
@@ -117,7 +120,7 @@ Production_And_Creatives = pd.DataFrame({
 Production_And_Creatives.to_csv(f"{PATH}Production_And_Creatives.csv", index=False)
 print("dataset/Production_And_Creatives.csv creato")
 
-### 9. Distribution_And_Awards (senza Series_Title)
+### 9. Distribution_And_Awards (without Series_Title)
 Distribution_And_Awards = pd.DataFrame({
     'Release_Format': [random.choice(["Streaming", "Theater", "DVD"]) for _ in range(base_len)],
     'Production_Company': Casting_Info['Production_Company'],
@@ -128,7 +131,7 @@ Distribution_And_Awards = pd.DataFrame({
 Distribution_And_Awards.to_csv(f"{PATH}Distribution_And_Awards.csv", index=False)
 print("dataset/Distribution_And_Awards.csv creato")
 
-### 10. Core_Crew_Info (solo N1, N2)
+### 10. Core_Crew_Info (only N1 and N2)
 Core_Crew_Info = pd.DataFrame({
     'Production_Company': Casting_Info['Production_Company'],
     'Lead_Actor': Casting_Info['Lead_Actor']
