@@ -1,7 +1,9 @@
 {
-    "candidate_used": "Candidate1",
-    "join_type": "inner",
-    "target_attribute": "date",
-    "similarity_candidate_new": 0.75,
-    "final_join_similarity": 1.0
+    "source_table": "IMDB_Ver_0.csv",
+    "joined_table": "table_1.csv",
+    "candidate_used": "Behind_The_Scenes_Info.csv",
+    "join_type": "left",
+    "dropped_columns": [],
+    "aggregated_similarity_candidate_joined": 0.8328125,
+    "steps_explanation": "La trasformazione è stata ottenuta partendo dalla Source Table, a cui è stata joinata la tabella candidata 'Behind_The_Scenes_Info.csv' utilizzando la colonna 'Series_Title' come chiave di join. Il join di tipo 'left' ha prodotto esattamente la Joined Table: durante il processo, le seguenti colonne della tabella candidata sono state escluse: []"
 }

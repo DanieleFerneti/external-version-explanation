@@ -1,7 +1,8 @@
 from datasketch import MinHash
 import pandas as pd
 import os
-
+import operator
+import json
 
 def load_csv_table(path: str):
     return pd.read_csv(path)
@@ -88,25 +89,24 @@ def load_candidate_tables(candidate_dir="dataset/base_tables_v2"):
 
 
 def select_best_candidate(candidates_scores_by_schema, candidates_scores_by_values):
-    if not candidates_scores_by_schema:
-        raise ValueError("Nessuna tabella candidata contiene attributi aggiunti della Joined Table.")
-
     final_scores = {}
 
     for table in candidates_scores_by_schema.keys():
         final_scores[table] = (candidates_scores_by_schema[table] * 0.40) + (candidates_scores_by_values[table] * 0.60)
 
     final_scores = dict(sorted(final_scores.items(), key=lambda item: item[1], reverse=True))
-    return final_scores
+    best_table, best_score = max(final_scores.items(), key=operator.itemgetter(1))
 
-def test_join_types(base_table, candidate_df, joined_table, join_key="Series_Title"):
+    return (best_table,best_score),final_scores
+
+def test_join_types(source_table, candidate_df, joined_table, join_key="Series_Title"):
     join_types = ["left", "right"]
     join_results = {}
     for jt in join_types:
-        joined_df = pd.merge(base_table, candidate_df, on=join_key, how=jt)
+        joined_df = pd.merge(source_table, candidate_df, on=join_key, how=jt)
         identical = tables_are_identical(joined_df, joined_table)
         join_results[jt] = {"dataframe": joined_df, "identical": identical}
-        print(f"\nJoin type '{jt}' produce una tabella identica? {identical}")
+        print(f"join type '{jt}': {identical}")
     return join_results
 
 def find_matching_join(join_results):
@@ -115,22 +115,21 @@ def find_matching_join(join_results):
             return jt, result["dataframe"]
     return None, None
 
-def create_explanation(base_table_path, joined_table_path, best_candidate,
-                       candidate_common_attrs, candidate_score, matching_join,
+def create_explanation(source_table_path, joined_table_path, best_candidate,
+                        candidate_score, matching_join,
                        candidate_df, joined_df):
     candidate_cols = set(candidate_df.columns)
     joined_cols = set(joined_df.columns)
     dropped_columns = list(candidate_cols - joined_cols)
     explanation = {
-        "base_table": os.path.basename(base_table_path),
+        "source_table": os.path.basename(source_table_path),
         "joined_table": os.path.basename(joined_table_path),
         "candidate_used": best_candidate,
-        "common_attributes_used": candidate_common_attrs[best_candidate],
         "join_type": matching_join,
         "dropped_columns": dropped_columns,
         "aggregated_similarity_candidate_joined": candidate_score,
         "steps_explanation": (
-            "La trasformazione è stata ottenuta partendo dalla Base Table, "
+            "La trasformazione è stata ottenuta partendo dalla Source Table, "
             "a cui è stata joinata la tabella candidata '" + best_candidate + "' "
             "utilizzando la colonna 'Series_Title' come chiave di join. "
             "Il join di tipo '" + matching_join + "' ha prodotto esattamente la Joined Table: "
@@ -142,9 +141,12 @@ def create_explanation(base_table_path, joined_table_path, best_candidate,
 
 def save_json_output(explanation, results_dir="results", file_name="reconstructed_transformation.json"):
     if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
+        os.makedirs(results_dir, exist_ok = True)
     output_file = os.path.join(results_dir, file_name)
     with open(output_file, "w", encoding="utf8") as f:
         json.dump(explanation, f, indent=4, ensure_ascii=False)
     print("\nSpiegazione della trasformazione ricostruita (JSON):")
     print(json.dumps(explanation, indent=4, ensure_ascii=False))
+
+
+
