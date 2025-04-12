@@ -2,26 +2,8 @@ import os
 import json
 import pandas as pd
 from datasketch import MinHash
+from utils import compute_jaccard_similarity
 
-def compute_similarity_multiple(series1, series2, num_perm=128):
-    """
-    Calcola la similarità tra due serie utilizzando MinHash (Jaccard)
-    e il containment.
-    (Questa funzione non viene più usata per il calcolo dei punteggi a livello di schema.)
-    """
-    m1 = MinHash(num_perm=num_perm)
-    m2 = MinHash(num_perm=num_perm)
-    for value in series1.astype(str).tolist():
-        m1.update(value.encode('utf8'))
-    for value in series2.astype(str).tolist():
-        m2.update(value.encode('utf8'))
-    jaccard_sim = m1.jaccard(m2)
-    
-    set1 = set(series1.astype(str).tolist())
-    set2 = set(series2.astype(str).tolist())
-    containment_sim = len(set1.intersection(set2)) / len(set1) if set1 else 0.0
-    
-    return {"jaccard": jaccard_sim, "containment": containment_sim}
 
 def tables_are_identical(df1, df2):
     try:
@@ -29,24 +11,12 @@ def tables_are_identical(df1, df2):
     except Exception:
         return False
 
-def load_base_table(path="dataset/IMDB_Ver_0.csv"):
-    base_table = pd.read_csv(path)
-    #print("Base Table caricata da:", path)
-    return base_table, path
-
-def load_joined_table(joined_dir="dataset/joined_tables_v2"):
-    # Per semplicità si fissa il nome della Joined Table (es. "table_1.csv")
-    joined_filename = "table_8.csv"
-    joined_path = os.path.join(joined_dir, joined_filename)
-    joined_table = pd.read_csv(joined_path)
-    print("\nJoined Table caricata da: " + joined_filename + "\n")
-    return joined_table, joined_path
+def load_csv_table(path: str):
+    return pd.read_csv(path)
 
 def compute_added_attributes(base_table, joined_table):
     # Calcola le colonne aggiunte: cioè quelle presenti nella Joined Table ma non nella Base Table.
-    added_attrs = set(joined_table.columns) - set(base_table.columns)
-    #print("Attributi aggiunti nella Joined Table:", list(added_attrs))
-    return added_attrs
+    return set(joined_table.columns) - set(base_table.columns)
 
 def load_candidate_tables(candidate_dir="dataset/base_tables_v2"):
     candidate_files = [f for f in os.listdir(candidate_dir) if f.endswith(".csv")]
@@ -56,38 +26,60 @@ def load_candidate_tables(candidate_dir="dataset/base_tables_v2"):
         candidates[file] = pd.read_csv(path)
     return candidates, candidate_dir
 
-def compute_candidate_scores(added_attrs, candidates, joined_table=None):
+def compute_candidate_schema_scores(added_attrs, candidates, joined_table=None):
     """
     Calcola il punteggio per ciascun candidato basandosi esclusivamente sullo schema:
     il punteggio viene calcolato come il rapporto:
         (numero di added attributes presenti nello schema del candidato) / (numero totale di added attributes)
     """
-    candidate_scores = {}
-    candidate_common_attrs = {}
-    for filename, df in candidates.items():
-        # Considera solo i candidati che contengono la chiave di join "Series_Title"
-        if "Series_Title" not in df.columns:
-            print(f"Salto il candidato {filename} perché non contiene la colonna 'Series_Title'")
-            continue
-        # common_attrs sono gli attributi aggiunti (definiti dallo schema della Joined Table)
-        # che il candidato possiede
-        common_attrs = added_attrs.intersection(set(df.columns))
-        if not common_attrs:
-            continue
-        # Calcola il punteggio: frazione degli attributi aggiunti presenti
-        aggregated_sim = len(common_attrs) / len(added_attrs)  
-        candidate_scores[filename] = aggregated_sim
-        candidate_common_attrs[filename] = list(common_attrs)
-        print(f"Candidate {filename} - Similarità aggregata: {aggregated_sim:.2f}\n")
-    return candidate_scores, candidate_common_attrs
+    candidates_scores = {}
 
-def select_best_candidate(candidate_scores, candidate_common_attrs):
-    if not candidate_scores:
+    for filename, df in candidates.items():
+        if "Series_Title" not in df.columns:
+            sim = 0.0
+        else:
+            sim = compute_jaccard_similarity(added_attrs, df.columns)
+
+        if sim > 0.0:
+            candidates_scores[filename] = sim
+
+    return candidates_scores
+
+
+def compute_candidate_values_scores(schema_scores, added_attrs):
+    candidates_scores = {}
+    joined_table = load_csv_table("dataset/joined_tables_v2/table_9.csv")
+
+    for filename in schema_scores.keys():
+        candidate_table = load_csv_table(f"dataset/base_tables_v2/{filename}")
+        candidate_table = candidate_table.drop("Series_Title", axis=1)
+        print(f'evaluate: {filename} ****************')
+        candidates_scores[filename] = 0
+
+        for attr in added_attrs:
+            max_sim = 0
+            sim = 0
+            for column in candidate_table.columns:
+                sim = compute_jaccard_similarity(joined_table[attr], candidate_table[column])    
+                print(f'{attr} >>>> {column}: {sim}')
+                if sim > max_sim:
+                    max_sim = sim
+            candidates_scores[filename] =  candidates_scores[filename] + max_sim
+        candidates_scores[filename] = candidates_scores[filename]/(len(added_attrs)/len(candidate_table.columns))
+
+    return candidates_scores
+
+def select_best_candidate(candidates_scores_by_schema, candidates_scores_by_values):
+    if not candidates_scores_by_schema:
         raise ValueError("Nessuna tabella candidata contiene attributi aggiunti della Joined Table.")
-    best_candidate = max(candidate_scores, key=candidate_scores.get)
-    print("\nLa tabella candidata migliore è:", best_candidate)
-    print("\nPunteggio aggregato:", candidate_scores[best_candidate])
-    return best_candidate
+
+    final_scores = {}
+
+    for table in candidates_scores_by_schema.keys():
+        final_scores[table] = (candidates_scores_by_schema[table] * 0.40) + (candidates_scores_by_values[table] * 0.60)
+
+    final_scores = dict(sorted(final_scores.items(), key=lambda item: item[1], reverse=True))
+    return final_scores
 
 def test_join_types(base_table, candidate_df, joined_table, join_key="Series_Title"):
     join_types = ["left", "right"]
@@ -141,43 +133,55 @@ def save_json_output(explanation, results_dir="results", file_name="reconstructe
 
 def main_flow():
     # Step 1: Load Base Table
-    base_table, base_table_path = load_base_table()
+    base_table = load_csv_table("dataset/IMDB_Ver_0.csv")
     
     # Step 2: Load Joined Table
-    joined_table, joined_table_path = load_joined_table()
+    joined_table = load_csv_table("dataset/joined_tables_v2/table_9.csv")
     
     # Step 3: Compute Added Attributes (solo quelle aggiunte allo schema, cioè le colonne nuove della Joined Table)
     added_attrs = compute_added_attributes(base_table, joined_table)
+    print(f"added attributes: {added_attrs}")
     
     # Step 4: Load Candidate Tables
     candidates, candidate_dir = load_candidate_tables()
     
     # Step 5: Compute Candidate Scores utilizzando solo i nomi (lo schema) delle colonne aggiunte
-    candidate_scores, candidate_common_attrs = compute_candidate_scores(added_attrs, candidates)
+    candidates_scores_by_schema = compute_candidate_schema_scores(added_attrs, candidates)
+    candidates_scores_by_schema = dict(sorted(candidates_scores_by_schema.items(), key=lambda item: item[1], reverse=True))
+
+    print('** Schema based similarity - minhash')
+    for k in candidates_scores_by_schema.keys():
+        if candidates_scores_by_schema[k] > 0:
+            print(f'{k}: {candidates_scores_by_schema[k]}')
     
+
+    candidates_scores_by_values = compute_candidate_values_scores(candidates_scores_by_schema, added_attrs)
+    print(candidates_scores_by_values)
+
     # Step 6: Select Best Candidate
-    best_candidate = select_best_candidate(candidate_scores, candidate_common_attrs)
-    best_candidate_path = os.path.join(candidate_dir, best_candidate)
-    candidate_df = pd.read_csv(best_candidate_path)
+    best_candidate = select_best_candidate(candidates_scores_by_schema, candidates_scores_by_values)
+    print(best_candidate)
+    # best_candidate_path = os.path.join(candidate_dir, best_candidate)
+    # candidate_df = pd.read_csv(best_candidate_path)
     
-    # Step 7: Test Join Types
-    join_results = test_join_types(base_table, candidate_df, joined_table)
+    # # Step 7: Test Join Types
+    # join_results = test_join_types(base_table, candidate_df, joined_table)
     
-    # Step 8: Find Matching Join
-    matching_join, joined_df = find_matching_join(join_results)
+    # # Step 8: Find Matching Join
+    # matching_join, joined_df = find_matching_join(join_results)
     
-    if matching_join:
-        print("\nIl join type che produce una tabella identica è:", matching_join)
-        # Step 9: Create Explanation
-        explanation = create_explanation(base_table_path, joined_table_path,
-                                         best_candidate, candidate_common_attrs,
-                                         candidate_scores[best_candidate], matching_join,
-                                         candidate_df, joined_df)
-        # Step 10: Save JSON Output
-        save_json_output(explanation)
-    else:
-        print("\nNessun tipo di join produce una tabella identica alla Joined Table. " +
-              "Verifica se la trasformazione include altre operazioni o se il candidato selezionato non è quello corretto.")
+    # if matching_join:
+    #     print("\nIl join type che produce una tabella identica è:", matching_join)
+    #     # Step 9: Create Explanation
+    #     explanation = create_explanation(base_table_path, joined_table_path,
+    #                                      best_candidate, candidate_common_attrs,
+    #                                      candidate_scores[best_candidate], matching_join,
+    #                                      candidate_df, joined_df)
+    #     # Step 10: Save JSON Output
+    #     save_json_output(explanation)
+    # else:
+    #     print("\nNessun tipo di join produce una tabella identica alla Joined Table. " +
+    #           "Verifica se la trasformazione include altre operazioni o se il candidato selezionato non è quello corretto.")
 
 if __name__ == "__main__":
     main_flow()
